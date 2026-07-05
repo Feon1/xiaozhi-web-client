@@ -153,7 +153,7 @@
         let audioProcessor = null;
         let audioStream = null;
         let processorNode = null;
-        const wsUrl = "{{ local_proxy_url }}";  // используем настройку локального прокси
+        const wsUrl = `wss://${window.location.host}/`;  // используем настройку локального прокси
         let silenceTimer = null;
         const SILENCE_TIMEOUT = 1000; // 1 секунда тишины для автоматической остановки
         let lastAudioTime = 0;

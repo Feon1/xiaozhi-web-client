@@ -16,13 +16,9 @@ TOKEN = os.getenv("DEVICE_TOKEN", "")
 if not TOKEN:
     print("⚠️  ВНИМАНИЕ: DEVICE_TOKEN не задан! Чат не сможет подключиться.")
 
-# Формируем URL с токеном в параметре (как в MCPHub)
-BASE_WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/mcp/")
-# Добавляем токен к URL
-if "?" in BASE_WS_URL:
-    WS_URL = f"{BASE_WS_URL}&token={TOKEN}"
-else:
-    WS_URL = f"{BASE_WS_URL}?token={TOKEN}"
+# Используем эндпоинт /ws, а не /mcp/
+BASE_WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/ws")
+WS_URL = BASE_WS_URL  # токен передаём в заголовке, а не в URL
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -49,10 +45,12 @@ async def websocket_proxy(websocket: WebSocket):
     await websocket.accept()
     print(f"📡 Клиент подключился: {websocket.client}")
     
+    # Заголовки для Xiaozhi /ws
     headers = {
         "Device-Id": DEVICE_ID,
         "Client-Id": CLIENT_ID,
         "Protocol-Version": "1",
+        "Authorization": f"Bearer {TOKEN}",   # <-- токен в заголовке
     }
     
     print(f"🌐 Подключение к Xiaozhi по адресу: {WS_URL}")
@@ -78,10 +76,12 @@ async def websocket_proxy(websocket: WebSocket):
                         if isinstance(msg, str):
                             await websocket.send_text(msg)
                         else:
-                            # бинарные данные игнорируем (аудио не поддерживаем)
+                            # бинарные данные (аудио) – игнорируем
                             pass
                 except Exception as e:
                     print(f"Ошибка пересылки сервер→клиент: {e}")
+                    # Если сервер закрыл соединение, закрываем клиентское
+                    await websocket.close()
             
             await asyncio.gather(
                 forward_to_server(),

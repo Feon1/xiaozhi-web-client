@@ -11,6 +11,7 @@ import uvicorn
 
 load_dotenv()
 
+# Используем правильный URL по умолчанию (без /v1)
 WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/ws")
 TOKEN = os.getenv("DEVICE_TOKEN", "123")
 ENABLE_TOKEN = os.getenv("ENABLE_TOKEN", "true").lower() == "true"
@@ -48,6 +49,9 @@ async def websocket_proxy(websocket: WebSocket):
     }
     if ENABLE_TOKEN:
         headers["Authorization"] = f"Bearer {TOKEN}"
+    
+    print(f"🌐 Подключение к Xiaozhi по адресу: {WS_URL}")
+    print(f"📋 Заголовки: {headers}")
     
     try:
         async with websockets.connect(WS_URL, extra_headers=headers) as server_ws:
@@ -90,20 +94,16 @@ async def get_index():
         with open("templates/index.html", "r", encoding="utf-8") as f:
             html = f.read()
         
-        # Вычисляем значения для подстановки
         token_status = "Включено" if ENABLE_TOKEN else "Отключено"
         enable_checked = "checked" if ENABLE_TOKEN else ""
-        token_value = TOKEN
-        local_proxy_url = ""  # не используется
         
-        # Заменяем все переменные
         replacements = {
             "{{ device_id }}": DEVICE_ID,
             "{{ ws_url }}": WS_URL,
-            "{{ local_proxy_url }}": local_proxy_url,
-            "{{ token_status }}": token_status,          # новая переменная
-            "{{ enable_checked }}": enable_checked,      # новая переменная
-            "{{ token }}": token_value,
+            "{{ local_proxy_url }}": "",
+            "{{ token_status }}": token_status,
+            "{{ enable_checked }}": enable_checked,
+            "{{ token }}": TOKEN,
         }
         
         for key, value in replacements.items():
@@ -117,8 +117,7 @@ async def get_index():
 @app.post("/save_config")
 async def save_config(request: Request):
     data = await request.json()
-    # Здесь можно сохранять в .env или файл, но для демонстрации просто возвращаем успех
-    return {"success": True, "message": "Настройки сохранены"}
+    return {"success": True, "message": "Настройки сохранены (заглушка)"}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

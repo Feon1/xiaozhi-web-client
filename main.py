@@ -11,7 +11,8 @@ import uvicorn
 
 load_dotenv()
 
-WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/ws")
+# Пробуем разные адреса — сначала с /v1, потом без
+WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/v1/ws")  # изменил на /v1
 TOKEN = os.getenv("DEVICE_TOKEN", "123")
 ENABLE_TOKEN = os.getenv("ENABLE_TOKEN", "true").lower() == "true"
 
@@ -53,7 +54,8 @@ async def websocket_proxy(websocket: WebSocket):
     print(f"📋 Заголовки: {headers}")
     
     try:
-        async with websockets.connect(WS_URL, extra_headers=headers) as server_ws:
+        # Добавляем таймаут и обработку статуса
+        async with websockets.connect(WS_URL, extra_headers=headers, timeout=10) as server_ws:
             print("✅ Подключено к серверу Xiaozhi")
             
             async def forward_to_server():
@@ -81,6 +83,9 @@ async def websocket_proxy(websocket: WebSocket):
                 forward_to_server(),
                 forward_to_client()
             )
+    except websockets.exceptions.InvalidStatusCode as e:
+        print(f"❌ Неверный статус-код от сервера Xiaozhi: {e.status_code}")
+        await websocket.close()
     except Exception as e:
         print(f"❌ Ошибка прокси: {e}")
         await websocket.close()
@@ -90,11 +95,9 @@ async def websocket_proxy(websocket: WebSocket):
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
     try:
-        # Читаем HTML-файл
         with open("templates/index.html", "r", encoding="utf-8") as f:
             html = f.read()
         
-        # Подставляем значения
         html = html.replace("{{ device_id }}", DEVICE_ID)
         html = html.replace("{{ ws_url }}", WS_URL)
         html = html.replace("{{ local_proxy_url }}", "")

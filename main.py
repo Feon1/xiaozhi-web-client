@@ -5,25 +5,20 @@ import uuid
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 import websockets
 from dotenv import load_dotenv
 import uvicorn
 
 load_dotenv()
 
-# ----- Конфигурация -----
 WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/ws")
 TOKEN = os.getenv("DEVICE_TOKEN", "123")
 ENABLE_TOKEN = os.getenv("ENABLE_TOKEN", "true").lower() == "true"
 
 app = FastAPI()
 
-# Статика и шаблоны
 app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
 
-# Генерация ID устройства
 def get_mac_address():
     mac = uuid.getnode()
     return ':'.join(['{:02x}'.format((mac >> elements) & 0xff) for elements in range(0, 8*6, 8)][::-1])
@@ -41,7 +36,6 @@ def get_client_id():
 DEVICE_ID = get_mac_address()
 CLIENT_ID = get_client_id()
 
-# ----- WebSocket прокси -----
 @app.websocket("/")
 async def websocket_proxy(websocket: WebSocket):
     await websocket.accept()
@@ -75,7 +69,7 @@ async def websocket_proxy(websocket: WebSocket):
                         if isinstance(msg, str):
                             await websocket.send_text(msg)
                         else:
-                            # бинарные данные игнорируем (аудио)
+                            # бинарные данные игнорируем
                             pass
                 except Exception as e:
                     print(f"Ошибка пересылки сервер→клиент: {e}")
@@ -90,25 +84,29 @@ async def websocket_proxy(websocket: WebSocket):
     finally:
         print("🔌 Клиент отключён")
 
-# ----- Главная страница (БЕЗ request в контексте) -----
+# ----- ГЛАВНАЯ СТРАНИЦА (без Jinja2, с прямой заменой) -----
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
-    # Контекст только с нужными переменными
-    context = {
-        "device_id": DEVICE_ID,
-        "ws_url": WS_URL,
-        "local_proxy_url": "",      # не используется, но оставим для совместимости
-        "enable_token": ENABLE_TOKEN,
-        "token": TOKEN
-    }
-    return templates.TemplateResponse("index.html", context)
+    try:
+        with open("templates/index.html", "r", encoding="utf-8") as f:
+            html = f.read()
+        
+        # Заменяем все переменные
+        html = html.replace("{{ device_id }}", DEVICE_ID)
+        html = html.replace("{{ ws_url }}", WS_URL)
+        html = html.replace("{{ local_proxy_url }}", "")   # больше не используется
+        html = html.replace("{{ enable_token }}", str(ENABLE_TOKEN))
+        html = html.replace("{{ token }}", TOKEN)
+        
+        return HTMLResponse(content=html)
+    except Exception as e:
+        print(f"Ошибка загрузки шаблона: {e}")
+        return HTMLResponse(content="Ошибка сервера", status_code=500)
 
-# ----- Сохранение настроек (заглушка) -----
 @app.post("/save_config")
 async def save_config(request: Request):
     data = await request.json()
-    # Можно сохранять в .env, но для простоты просто возвращаем успех
-    return {"success": True, "message": "Настройки сохранены (только для интерфейса)"}
+    return {"success": True, "message": "Настройки сохранены (заглушка)"}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

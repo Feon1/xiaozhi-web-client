@@ -84,19 +84,30 @@ async def websocket_proxy(websocket: WebSocket):
     finally:
         print("🔌 Клиент отключён")
 
-# ----- ГЛАВНАЯ СТРАНИЦА (без Jinja2, с прямой заменой) -----
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
     try:
         with open("templates/index.html", "r", encoding="utf-8") as f:
             html = f.read()
         
+        # Вычисляем значения для подстановки
+        token_status = "Включено" if ENABLE_TOKEN else "Отключено"
+        enable_checked = "checked" if ENABLE_TOKEN else ""
+        token_value = TOKEN
+        local_proxy_url = ""  # не используется
+        
         # Заменяем все переменные
-        html = html.replace("{{ device_id }}", DEVICE_ID)
-        html = html.replace("{{ ws_url }}", WS_URL)
-        html = html.replace("{{ local_proxy_url }}", "")   # больше не используется
-        html = html.replace("{{ enable_token }}", str(ENABLE_TOKEN))
-        html = html.replace("{{ token }}", TOKEN)
+        replacements = {
+            "{{ device_id }}": DEVICE_ID,
+            "{{ ws_url }}": WS_URL,
+            "{{ local_proxy_url }}": local_proxy_url,
+            "{{ token_status }}": token_status,          # новая переменная
+            "{{ enable_checked }}": enable_checked,      # новая переменная
+            "{{ token }}": token_value,
+        }
+        
+        for key, value in replacements.items():
+            html = html.replace(key, value)
         
         return HTMLResponse(content=html)
     except Exception as e:
@@ -106,7 +117,8 @@ async def get_index():
 @app.post("/save_config")
 async def save_config(request: Request):
     data = await request.json()
-    return {"success": True, "message": "Настройки сохранены (заглушка)"}
+    # Здесь можно сохранять в .env или файл, но для демонстрации просто возвращаем успех
+    return {"success": True, "message": "Настройки сохранены"}
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))

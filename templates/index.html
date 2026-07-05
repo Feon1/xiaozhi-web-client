@@ -1,99 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Чат XiaoZhi AI (MCP)</title>
+    <title>Чат XiaoZhi AI</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="/static/styles.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
     <div class="chat-container">
         <div class="header">
-            <h1 class="text-2xl font-bold">Чат XiaoZhi AI (MCP)</h1>
-            <button class="settings-btn" id="settingsToggleBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </button>
+            <h1 class="text-2xl font-bold">Чат XiaoZhi AI</h1>
         </div>
-
         <div class="p-4 bg-gray-50 border-b">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <span id="connectionStatus" class="status disconnected">Не подключено</span>
-                    <span class="text-sm text-gray-600">ID устройства: {{ device_id }}</span>
-                </div>
-            </div>
+            <span id="connectionStatus" class="status disconnected">Не подключено</span>
+            <span class="text-sm text-gray-600">ID устройства: {{ device_id }}</span>
         </div>
-
         <div class="chat-box" id="chatBox"></div>
-
         <div class="input-container">
             <input type="text" id="messageInput" placeholder="Введите сообщение...">
-            <button class="btn-primary" id="sendBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clip-rule="evenodd" />
-                </svg>
-                <span>Отправить</span>
-            </button>
+            <button class="btn-primary" id="sendBtn">Отправить</button>
         </div>
     </div>
-
-    <div class="settings-panel" id="settingsPanel">
-        <h2 class="text-xl font-bold mb-4">Настройки</h2>
-        <div class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Адрес удалённого сервера</label>
-                <input type="text" id="remoteServerUrl" class="w-full" value="{{ ws_url }}" placeholder="например: ws://your-server:9005">
-                <p class="text-sm text-gray-500 mt-1">Адрес, к которому подключается прокси-сервер</p>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Адрес локального прокси</label>
-                <input type="text" id="localProxyUrl" class="w-full" value="{{ local_proxy_url }}" placeholder="например: wss://localhost:5002">
-                <p class="text-sm text-gray-500 mt-1">Адрес для подключения фронтенда к прокси</p>
-            </div>
-            <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                    <label class="block text-sm font-medium text-gray-700">Настройка токена</label>
-                    <div class="flex items-center">
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="enableToken" {{ enable_checked }}>
-                            <span class="toggle-slider"></span>
-                        </label>
-                        <span class="ml-2 text-sm font-medium text-gray-700" id="tokenStatus">{{ token_status }}</span>
-                    </div>
-                </div>
-                <input type="text" id="serverToken" class="w-full transition-all duration-200" 
-                    value="{{ token }}" {% if not enable_token %}disabled{% endif %}
-                    style="{% if not enable_token %}background-color: #f3f4f6; border-color: #e5e7eb;{% endif %}">
-                <p class="text-sm text-gray-500">При включении будет передаваться токен при подключении</p>
-            </div>
-            <div class="flex justify-end space-x-2 mt-4">
-                <button class="btn-primary" id="saveSettingsBtn">Сохранить настройки</button>
-                <button class="btn-danger" id="cancelSettingsBtn">Отмена</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="overlay" id="overlay"></div>
 
     <script>
         (function() {
-            "use strict";
-
             let ws = null;
-            let isConnected = false;
-            let isInitialized = false;
-            let requestId = 0;
-            let pendingCalls = {};
-            let chatToolName = null;
-
+            let sessionId = null;
             const wsUrl = `wss://${window.location.host}/`;
             const statusEl = document.getElementById('connectionStatus');
             const chatBox = document.getElementById('chatBox');
-            const messageInput = document.getElementById('messageInput');
+            const input = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
 
             function setStatus(text, state) {
@@ -114,166 +51,77 @@
                 div.appendChild(time);
                 chatBox.appendChild(div);
                 chatBox.scrollTop = chatBox.scrollHeight;
-                return div;
-            }
-
-            function sendJsonRpc(method, params, callback) {
-                const id = ++requestId;
-                const message = { jsonrpc: "2.0", id, method, params: params || {} };
-                if (callback) pendingCalls[id] = callback;
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify(message));
-                } else {
-                    console.warn('WebSocket не открыт');
-                }
             }
 
             function connect() {
-                if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
-                console.log('Подключение к:', wsUrl);
+                if (ws && ws.readyState === WebSocket.OPEN) return;
                 ws = new WebSocket(wsUrl);
-
                 ws.onopen = function() {
                     console.log('WebSocket открыт');
-                    isConnected = true;
-                    setStatus('Инициализация...', 'connecting');
-                    sendJsonRpc('initialize', {
-                        protocolVersion: "2024-11-05",
-                        capabilities: {},
-                        clientInfo: { name: "web-mcp-client", version: "1.0.0" }
-                    }, function(response) {
-                        console.log('Initialize ответ:', response);
-                        if (response.result) {
-                            ws.send(JSON.stringify({ jsonrpc: "2.0", method: "initialized" }));
-                            isInitialized = true;
-                            setStatus('Подключено (MCP)', 'connected');
-                            appendMessage('system', '✅ MCP-сессия инициализирована');
-                            sendJsonRpc('tools/list', {}, function(toolsResponse) {
-                                console.log('Список инструментов:', toolsResponse);
-                                if (toolsResponse.result && toolsResponse.result.tools) {
-                                    const tools = toolsResponse.result.tools;
-                                    const chatTool = tools.find(t => t.name === 'send_message' || t.name === 'chat' || t.name === 'ask' || t.name === 'xiaozhi');
-                                    if (chatTool) {
-                                        chatToolName = chatTool.name;
-                                        appendMessage('system', `🔧 Инструмент: ${chatToolName}`);
-                                    } else {
-                                        chatToolName = tools[0]?.name || 'send_message';
-                                        appendMessage('system', `⚠️ Используем инструмент: ${chatToolName}`);
-                                    }
-                                }
-                            });
-                        } else {
-                            console.error('Ошибка инициализации:', response.error);
-                            setStatus('Ошибка инициализации', 'error');
-                            appendMessage('error', '❌ Ошибка инициализации MCP: ' + (response.error?.message || 'неизвестная ошибка'));
+                    setStatus('Подключено', 'connected');
+                    const hello = JSON.stringify({
+                        type: "hello",
+                        version: 1,
+                        transport: "websocket",
+                        audio_params: {
+                            format: "opus",
+                            sample_rate: 16000,
+                            channels: 1,
+                            frame_duration: 60
                         }
                     });
+                    ws.send(hello);
                 };
-
                 ws.onmessage = function(event) {
                     try {
                         const data = JSON.parse(event.data);
-                        console.log('Получено JSON-RPC:', data);
-                        if (data.id && pendingCalls[data.id]) {
-                            const callback = pendingCalls[data.id];
-                            delete pendingCalls[data.id];
-                            callback(data);
-                        } else {
-                            console.log('Уведомление:', data);
+                        if (data.type === 'hello') {
+                            sessionId = data.session_id;
+                            console.log('session_id:', sessionId);
+                            appendMessage('system', '✅ Сессия установлена');
+                        } else if (data.type === 'stt') {
+                            // распознанная речь
+                            if (data.text) appendMessage('user', data.text);
+                        } else if (data.type === 'tts') {
+                            if (data.state === 'start' && data.text) {
+                                appendMessage('server', data.text);
+                            }
                         }
                     } catch (e) {
-                        console.error('Ошибка разбора сообщения:', e);
+                        console.error('Ошибка парсинга:', e);
                     }
                 };
-
-                ws.onclose = function(event) {
-                    console.log('WebSocket закрыт, код:', event.code);
-                    isConnected = false;
-                    isInitialized = false;
+                ws.onclose = function() {
                     setStatus('Не подключено', 'disconnected');
-                    appendMessage('system', '🔌 Соединение разорвано, переподключение через 3 сек...');
+                    sessionId = null;
                     setTimeout(connect, 3000);
                 };
-
-                ws.onerror = function(error) {
-                    console.error('Ошибка WebSocket:', error);
+                ws.onerror = function() {
                     setStatus('Ошибка', 'error');
                 };
             }
 
             function sendMessage() {
-                const text = messageInput.value.trim();
-                if (!text) return;
-                if (!isConnected || !isInitialized || !chatToolName) {
-                    appendMessage('error', '❌ Соединение не готово или инструмент не найден');
+                const text = input.value.trim();
+                if (!text || !ws || ws.readyState !== WebSocket.OPEN || !sessionId) {
+                    appendMessage('error', '❌ Нет соединения или сессии');
                     return;
                 }
+                const msg = JSON.stringify({
+                    type: "listen",
+                    state: "detect",
+                    text: text,
+                    source: "text"
+                });
+                ws.send(msg);
                 appendMessage('user', text);
-                sendJsonRpc('tools/call', {
-                    name: chatToolName,
-                    arguments: { message: text }
-                }, function(response) {
-                    if (response.result) {
-                        let reply = '';
-                        if (response.result.content && Array.isArray(response.result.content)) {
-                            reply = response.result.content.map(item => item.text || '').join('\n');
-                        } else if (response.result.result) {
-                            reply = response.result.result;
-                        } else {
-                            reply = JSON.stringify(response.result);
-                        }
-                        if (reply) appendMessage('server', reply);
-                        else appendMessage('system', '⚠️ Пустой ответ');
-                    } else if (response.error) {
-                        appendMessage('error', '❌ Ошибка: ' + response.error.message);
-                    } else {
-                        appendMessage('error', '❌ Неизвестный ответ');
-                    }
-                });
-                messageInput.value = '';
+                input.value = '';
             }
 
-            function initUI() {
-                sendBtn.addEventListener('click', sendMessage);
-                messageInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
 
-                document.getElementById('settingsToggleBtn').addEventListener('click', function() {
-                    document.getElementById('settingsPanel').classList.toggle('active');
-                    document.getElementById('overlay').classList.toggle('active');
-                });
-                document.getElementById('overlay').addEventListener('click', function() {
-                    document.getElementById('settingsPanel').classList.remove('active');
-                    document.getElementById('overlay').classList.remove('active');
-                });
-                document.getElementById('saveSettingsBtn').addEventListener('click', function() {
-                    alert('Сохранение настроек пока не реализовано');
-                });
-                document.getElementById('cancelSettingsBtn').addEventListener('click', function() {
-                    document.getElementById('settingsPanel').classList.remove('active');
-                    document.getElementById('overlay').classList.remove('active');
-                });
-                document.getElementById('enableToken').addEventListener('change', function(e) {
-                    const tokenInput = document.getElementById('serverToken');
-                    const statusText = document.getElementById('tokenStatus');
-                    tokenInput.disabled = !e.target.checked;
-                    if (!e.target.checked) {
-                        tokenInput.style.backgroundColor = '#f3f4f6';
-                        tokenInput.style.borderColor = '#e5e7eb';
-                        statusText.textContent = 'Отключено';
-                        statusText.style.color = '#374151';
-                    } else {
-                        tokenInput.style.backgroundColor = '';
-                        tokenInput.style.borderColor = '';
-                        statusText.textContent = 'Включено';
-                        statusText.style.color = '#34c759';
-                    }
-                });
-            }
-
-            document.addEventListener('DOMContentLoaded', function() {
-                initUI();
-                connect();
-            });
+            connect();
         })();
     </script>
 </body>

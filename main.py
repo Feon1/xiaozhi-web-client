@@ -11,7 +11,6 @@ import uvicorn
 
 load_dotenv()
 
-# Используем правильный URL по умолчанию (без /v1)
 WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/ws")
 TOKEN = os.getenv("DEVICE_TOKEN", "123")
 ENABLE_TOKEN = os.getenv("ENABLE_TOKEN", "true").lower() == "true"
@@ -91,28 +90,22 @@ async def websocket_proxy(websocket: WebSocket):
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
     try:
+        # Читаем HTML-файл
         with open("templates/index.html", "r", encoding="utf-8") as f:
             html = f.read()
         
-        token_status = "Включено" if ENABLE_TOKEN else "Отключено"
-        enable_checked = "checked" if ENABLE_TOKEN else ""
-        
-        replacements = {
-            "{{ device_id }}": DEVICE_ID,
-            "{{ ws_url }}": WS_URL,
-            "{{ local_proxy_url }}": "",
-            "{{ token_status }}": token_status,
-            "{{ enable_checked }}": enable_checked,
-            "{{ token }}": TOKEN,
-        }
-        
-        for key, value in replacements.items():
-            html = html.replace(key, value)
+        # Подставляем значения
+        html = html.replace("{{ device_id }}", DEVICE_ID)
+        html = html.replace("{{ ws_url }}", WS_URL)
+        html = html.replace("{{ local_proxy_url }}", "")
+        html = html.replace("{{ token_status }}", "Включено" if ENABLE_TOKEN else "Отключено")
+        html = html.replace("{{ enable_checked }}", "checked" if ENABLE_TOKEN else "")
+        html = html.replace("{{ token }}", TOKEN)
         
         return HTMLResponse(content=html)
     except Exception as e:
         print(f"Ошибка загрузки шаблона: {e}")
-        return HTMLResponse(content="Ошибка сервера", status_code=500)
+        return HTMLResponse(content=f"Ошибка сервера: {e}", status_code=500)
 
 @app.post("/save_config")
 async def save_config(request: Request):

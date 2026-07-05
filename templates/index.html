@@ -56,7 +56,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Адрес локального прокси</label>
-                <input type="text" id="localProxyUrl" class="w-full" value="{{ local_proxy_url }}" placeholder="например: ws://localhost:5002">
+                <input type="text" id="localProxyUrl" class="w-full" value="{{ local_proxy_url }}" placeholder="например: wss://localhost:5002">
                 <p class="text-sm text-gray-500 mt-1">Адрес для подключения фронтенда к прокси</p>
             </div>
             <div class="space-y-2">
@@ -64,12 +64,10 @@
                     <label class="block text-sm font-medium text-gray-700">Настройка токена</label>
                     <div class="flex items-center">
                         <label class="toggle-switch">
-                            <input type="checkbox" id="enableToken" {% if enable_token %}checked{% endif %}>
+                            <input type="checkbox" id="enableToken" {{ enable_checked }}>
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="ml-2 text-sm font-medium text-gray-700" id="tokenStatus">
-                            {{ "Включено" if enable_token else "Отключено" }}
-                        </span>
+                        <span class="ml-2 text-sm font-medium text-gray-700" id="tokenStatus">{{ token_status }}</span>
                     </div>
                 </div>
                 <input type="text" id="serverToken" class="w-full transition-all duration-200" 
@@ -153,19 +151,18 @@
         let audioProcessor = null;
         let audioStream = null;
         let processorNode = null;
-        const wsUrl = `wss://${window.location.host}/`;  // используем настройку локального прокси
+        const wsUrl = `wss://${window.location.host}/`;
         let silenceTimer = null;
-        const SILENCE_TIMEOUT = 1000; // 1 секунда тишины для автоматической остановки
+        const SILENCE_TIMEOUT = 1000;
         let lastAudioTime = 0;
-        let currentResponseDiv = null;  // текущий блок ответа
-        const BUFFER_THRESHOLD = 3;     // порог буфера, после которого начинаем воспроизведение
-        let audioBufferQueue = [];      // очередь аудиобуферов
+        let currentResponseDiv = null;
+        const BUFFER_THRESHOLD = 3;
+        let audioBufferQueue = [];
         let isAudioContextInitialized = false;
         let lastUserAudioLevel = 0;
         let lastAIAudioLevel = 0;
         let animationCheckInterval = null;
 
-        // Инициализация аудио-процессора
         async function initAudioProcessor() {
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({
@@ -176,10 +173,8 @@
             return audioContext;
         }
 
-        // Переключение состояния разговора по клику
         function initRecordButton() {
             const button = document.getElementById('recordButton');
-            
             button.addEventListener('click', async () => {
                 if (!isRecording) {
                     await startRecording();
@@ -191,14 +186,11 @@
             });
         }
 
-        // Начать запись
         async function startRecording() {
             try {
-                // Показать интерфейс вызова
                 const voiceCallMode = document.getElementById('voiceCallMode');
                 voiceCallMode.classList.add('active');
 
-                // Остановить всё воспроизведение
                 if (audioContext) {
                     await audioContext.close();
                     audioContext = null;
@@ -242,7 +234,7 @@
                 
                 processorNode = new AudioWorkletNode(audioContext, 'audio-processor', {
                     processorOptions: {
-                        bufferSize: 960 // 60ms при 16 кГц
+                        bufferSize: 960
                     }
                 });
 
@@ -257,8 +249,8 @@
                             const audioData = new Float32Array(e.data.buffer);
                             const audioLevel = detectAudioLevel(audioData);
                             updateUserWaveAnimation(audioLevel);
-                        ws.send(e.data.buffer);
-                        lastAudioTime = Date.now();
+                            ws.send(e.data.buffer);
+                            lastAudioTime = Date.now();
                         }
                     }
                 };
@@ -266,7 +258,6 @@
                 source.connect(processorNode);
                 processorNode.connect(audioContext.destination);
 
-                // Отправить сообщение о начале записи
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     const startMessage = JSON.stringify({
                         type: "listen",
@@ -279,7 +270,6 @@
                 isRecording = true;
                 lastAudioTime = Date.now();
                 
-                // Таймер тишины
                 silenceTimer = setInterval(() => {
                     if (isRecording && Date.now() - lastAudioTime > SILENCE_TIMEOUT) {
                         if (ws && ws.readyState === WebSocket.OPEN) {
@@ -298,7 +288,6 @@
             }
         }
 
-        // Остановить запись
         function stopRecording() {
             const voiceCallMode = document.getElementById('voiceCallMode');
             voiceCallMode.classList.remove('active');
@@ -363,7 +352,6 @@
             updateAIWaveAnimation(0);
         }
 
-        // Подключение к WebSocket
         function connect() {
             console.log('Подключение к:', wsUrl);
             ws = new WebSocket(wsUrl);
@@ -430,340 +418,4 @@
                             } else if (data.state === 'sentence_start') {
                                 showAIWaveAnimation(true);
                                 if (data.text && data.text.trim()) {
-                                if (!currentResponseDiv) {
-                                    currentResponseDiv = appendMessage('server', data.text);
-                                } else {
-                                        currentResponseDiv.innerHTML += ' ' + data.text;
-                                    const chatBox = document.getElementById('chatBox');
-                                    chatBox.scrollTop = chatBox.scrollHeight;
-                                    }
-                                }
-                            } else if (data.state === 'end' || data.state === 'stop') {
-                                showAIWaveAnimation(false);
-                                currentResponseDiv = null;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error('Ошибка обработки сообщения:', e);
-                }
-            };
-        }
-        
-        // Добавить сообщение в чат
-        function appendMessage(type, text) {
-            const chatBox = document.getElementById('chatBox');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
-            
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            
-            const formattedMessage = text.replace(/\n/g, '<br>');
-            contentDiv.innerHTML = formattedMessage;
-            
-            const timeDiv = document.createElement('div');
-            timeDiv.className = 'message-time';
-            const now = new Date();
-            timeDiv.textContent = now.toLocaleTimeString('ru-RU', { 
-                hour: '2-digit', 
-                minute: '2-digit'
-            });
-            
-            messageDiv.appendChild(contentDiv);
-            messageDiv.appendChild(timeDiv);
-            chatBox.appendChild(messageDiv);
-            
-            chatBox.scrollTop = chatBox.scrollHeight;
-            
-            if (type === 'server') {
-                return contentDiv;
-            }
-            return messageDiv;
-        }
-        
-        function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
-            
-            if (message && ws && isConnected && sessionId) {
-                const textMessage = JSON.stringify({
-                    type: "listen",
-                    state: "detect",
-                    text: message,
-                    source: "text"
-                });
-                ws.send(textMessage);
-                appendMessage('user', message);
-                input.value = '';
-            } else if (!sessionId) {
-                console.error('Нет ID сессии');
-                appendMessage('server', 'Соединение не готово, попробуйте позже');
-            }
-        }
-        
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-        
-        // Инициализация аудиоконтекста
-        function initAudioContext() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                    sampleRate: 16000,
-                    latencyHint: 'interactive'
-                });
-                nextPlayTime = audioContext.currentTime;
-                isAudioContextInitialized = true;
-            }
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-        }
-        
-        // Добавление аудио в очередь
-        function queueAudio(audioBlob) {
-            audioQueue.push(audioBlob);
-            if (!isPlaying && audioQueue.length >= BUFFER_THRESHOLD) {
-                isPlaying = true;
-                playNextAudio();
-            }
-        }
-
-        // Воспроизведение следующего аудио
-        async function playNextAudio() {
-            if (audioQueue.length === 0) {
-                isPlaying = false;
-                updateAIWaveAnimation(0);
-                return;
-            }
-            
-            try {
-                initAudioContext();
-                const audioBlob = audioQueue.shift();
-                const arrayBuffer = await audioBlob.arrayBuffer();
-                
-                const view = new DataView(arrayBuffer);
-                const magic = String.fromCharCode(...new Uint8Array(arrayBuffer.slice(0, 4)));
-                if (magic !== 'RIFF') {
-                    throw new Error('Неверный формат WAV');
-                }
-                
-                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-
-                const analyser = audioContext.createAnalyser();
-                analyser.fftSize = 256;
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Float32Array(bufferLength);
-
-                const gainNode = audioContext.createGain();
-                source.connect(analyser);
-                analyser.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                if (animationCheckInterval) {
-                    clearInterval(animationCheckInterval);
-                }
-                
-                animationCheckInterval = setInterval(() => {
-                    analyser.getFloatTimeDomainData(dataArray);
-                    const audioLevel = detectAudioLevel(dataArray);
-                    updateAIWaveAnimation(audioLevel);
-                }, 50);
-                
-                const currentTime = audioContext.currentTime;
-                const startTime = Math.max(currentTime, nextPlayTime);
-                
-                const fadeDuration = 0.005;
-                gainNode.gain.setValueAtTime(0, startTime);
-                gainNode.gain.linearRampToValueAtTime(1, startTime + fadeDuration);
-                gainNode.gain.setValueAtTime(1, startTime + audioBuffer.duration - fadeDuration);
-                gainNode.gain.linearRampToValueAtTime(0, startTime + audioBuffer.duration);
-                
-                source.start(startTime);
-                nextPlayTime = startTime + audioBuffer.duration + 0.05;
-                
-                    source.onended = () => {
-                    source.disconnect();
-                    gainNode.disconnect();
-                    analyser.disconnect();
-                    
-                    if (animationCheckInterval) {
-                        clearInterval(animationCheckInterval);
-                        animationCheckInterval = null;
-                    }
-                    
-                            if (audioQueue.length > 0) {
-                        setTimeout(() => playNextAudio(), 50);
-                            } else {
-                                isPlaying = false;
-                        updateAIWaveAnimation(0);
-                            }
-                    };
-            } catch (e) {
-                console.error('Ошибка воспроизведения:', e);
-                isPlaying = false;
-                updateAIWaveAnimation(0);
-                if (audioQueue.length > 0) {
-                    setTimeout(() => playNextAudio(), 100);
-                }
-            }
-        }
-
-        // Очистка при закрытии страницы
-        window.onbeforeunload = function() {
-            if (ws) {
-                ws.close();
-            }
-        };
-
-        // Загрузка страницы
-        window.onload = () => {
-            connect();
-            initRecordButton();
-        };
-
-        // Настройки
-        function toggleSettings() {
-            const panel = document.getElementById('settingsPanel');
-            const overlay = document.getElementById('overlay');
-            panel.classList.toggle('active');
-            overlay.classList.toggle('active');
-        }
-
-        function saveSettings() {
-            const newRemoteUrl = document.getElementById('remoteServerUrl').value.trim();
-            const newLocalProxyUrl = document.getElementById('localProxyUrl').value.trim();
-            const enableToken = document.getElementById('enableToken').checked;
-            const token = document.getElementById('serverToken').value.trim();
-            
-            if (newRemoteUrl && newLocalProxyUrl) {
-                fetch('/save_config', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        ws_url: newRemoteUrl,
-                        local_proxy_url: newLocalProxyUrl,
-                        enable_token: enableToken,
-                        token: enableToken ? token : ''
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert(data.message || 'Настройки сохранены');
-                        if (ws) {
-                            ws.close();
-                            setTimeout(connect, 1000);
-                        }
-                    } else {
-                        alert('Ошибка сохранения: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Ошибка сохранения:', error);
-                    alert('Ошибка сохранения настроек, проверьте соединение');
-                });
-            }
-            toggleSettings();
-        }
-
-        // Обработка переключателя токена
-        document.getElementById('enableToken').addEventListener('change', function(e) {
-            const tokenInput = document.getElementById('serverToken');
-            const statusText = document.getElementById('tokenStatus');
-            tokenInput.disabled = !e.target.checked;
-            
-            if (!e.target.checked) {
-                tokenInput.style.backgroundColor = '#f3f4f6';
-                tokenInput.style.borderColor = '#e5e7eb';
-                statusText.textContent = 'Отключено';
-                statusText.style.color = '#374151';
-            } else {
-                tokenInput.style.backgroundColor = '';
-                tokenInput.style.borderColor = '';
-                statusText.textContent = 'Включено';
-                statusText.style.color = '#34c759';
-            }
-        });
-
-        // Стиль кнопки записи
-        function updateRecordButtonStyle(isRecording) {
-            const button = document.getElementById('recordButton');
-            if (isRecording) {
-                button.style.background = '#ea4335';
-            } else {
-                button.style.background = '#34a853';
-            }
-        }
-
-        // Анимация волны
-        function showAIWaveAnimation(show) {
-            const wave = document.querySelector('.voice-wave');
-            if (show) {
-                wave.classList.add('active');
-            } else {
-                wave.classList.remove('active');
-            }
-        }
-
-        function showUserWaveAnimation(show) {
-            const wave = document.querySelector('.voice-wave');
-            if (show) {
-                wave.classList.add('active');
-            } else {
-                wave.classList.remove('active');
-            }
-        }
-
-        // Уровень звука
-        function detectAudioLevel(audioData) {
-            if (!audioData || !audioData.length) return 0;
-            let sum = 0;
-            for (let i = 0; i < audioData.length; i++) {
-                sum += Math.abs(audioData[i]);
-            }
-            return sum / audioData.length;
-        }
-
-        // Обновление анимации для пользователя
-        function updateUserWaveAnimation(audioLevel) {
-            const threshold = 0.01;
-            const maxHeight = 24;
-            const minHeight = 2;
-            
-            if (audioLevel > threshold) {
-                const height = Math.min(maxHeight, minHeight + (audioLevel * 100));
-                document.documentElement.style.setProperty('--wave-height', `${height}px`);
-                showUserWaveAnimation(true);
-            } else {
-                showUserWaveAnimation(false);
-            }
-        }
-
-        // Обновление анимации для ИИ
-        function updateAIWaveAnimation(audioLevel) {
-            const threshold = 0.01;
-            const avatar = document.querySelector('.voice-avatar');
-            const maxScale = 1.05;
-            
-            if (audioLevel > threshold) {
-                const scale = 1 + (Math.min(audioLevel * 2, 0.05));
-                avatar.style.transform = `scale(${scale})`;
-                avatar.classList.add('speaking');
-            } else {
-                avatar.style.transform = 'scale(1)';
-                if (audioLevel === 0) {
-                    avatar.classList.remove('speaking');
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+                                    if (!curre

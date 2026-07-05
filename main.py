@@ -90,19 +90,20 @@ async def websocket_proxy(websocket: WebSocket):
     finally:
         print("🔌 Клиент отключён")
 
-# ----- Главная страница -----
+# ----- Главная страница (БЕЗ request в контексте) -----
 @app.get("/", response_class=HTMLResponse)
-async def get_index(request: Request):
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+async def get_index():
+    # Контекст только с нужными переменными
+    context = {
         "device_id": DEVICE_ID,
         "ws_url": WS_URL,
-        "local_proxy_url": "",  # теперь не используется
+        "local_proxy_url": "",      # не используется, но оставим для совместимости
         "enable_token": ENABLE_TOKEN,
         "token": TOKEN
-    })
+    }
+    return templates.TemplateResponse("index.html", context)
 
-# ----- Сохранение настроек (для совместимости) -----
+# ----- Сохранение настроек (заглушка) -----
 @app.post("/save_config")
 async def save_config(request: Request):
     data = await request.json()

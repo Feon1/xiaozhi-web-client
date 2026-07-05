@@ -6,9 +6,6 @@ from dotenv import load_dotenv
 import uuid
 import wave
 import io
-import numpy as np
-from scipy import signal
-import soundfile as sf
 from urllib.parse import urlparse
 from system_info import setup_opus 
 import sys

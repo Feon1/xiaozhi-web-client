@@ -9,24 +9,22 @@ from urllib.parse import urlparse
 load_dotenv()
 
 # ----- Конфигурация -----
+# WS_URL - адрес сервера Xiaozhi
 WS_URL = os.getenv("WS_URL")
 if not WS_URL:
-    print("⚠️  WS_URL не задан, использую значение по умолчанию")
-    WS_URL = "ws://localhost:9005"
+    print("⚠️  WS_URL не задан, использую значение по умолчанию: wss://api.xiaozhi.me/ws")
+    WS_URL = "wss://api.xiaozhi.me/ws"  # правильный адрес без /v1
 
 TOKEN = os.getenv("DEVICE_TOKEN")
 if not TOKEN:
     print("⚠️  DEVICE_TOKEN не задан, использую '123'")
     TOKEN = "123"
 
-LOCAL_PROXY_URL = os.getenv("LOCAL_PROXY_URL", "ws://localhost:5002")
-try:
-    parsed = urlparse(LOCAL_PROXY_URL)
-    PROXY_HOST = '0.0.0.0'
-    PROXY_PORT = parsed.port or 5002
-except Exception:
-    PROXY_HOST = '0.0.0.0'
-    PROXY_PORT = 5002
+# Порт, на котором будет слушать прокси (Render задаёт PORT)
+PROXY_PORT = int(os.getenv("PORT", 5002))
+PROXY_HOST = '0.0.0.0'
+
+print(f"🔧 Прокси будет слушать на {PROXY_HOST}:{PROXY_PORT}")
 
 # ----- Вспомогательные функции -----
 def get_mac_address():
@@ -58,6 +56,9 @@ class WebSocketProxy:
         }
         if self.enable_token:
             self.headers["Authorization"] = f"Bearer {self.token}"
+        
+        print(f"🔑 Токен: {self.token if self.enable_token else 'отключён'}")
+        print(f"📋 Заголовки: {self.headers}")
 
     async def proxy_handler(self, websocket):
         """Обработка подключения от браузера"""
@@ -98,7 +99,7 @@ class WebSocketProxy:
         """Запуск прокси-сервера"""
         print(f"🚀 Прокси-сервер запущен на {PROXY_HOST}:{PROXY_PORT}")
         print(f"📱 Device ID: {self.device_id}")
-        print(f"🔑 Token: {TOKEN}")
+        print(f"🔑 Token: {self.token}")
         print(f"🌐 Целевой WS: {WS_URL}")
         
         async with websockets.serve(self.proxy_handler, PROXY_HOST, PROXY_PORT):

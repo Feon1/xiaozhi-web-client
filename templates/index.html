@@ -6,9 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="/static/styles.css" rel="stylesheet">
-    <style>
-        /* можно добавить свои стили, если нужно */
-    </style>
 </head>
 <body class="bg-gray-100">
     <div class="chat-container">
@@ -41,11 +38,9 @@
                 </svg>
                 <span>Отправить</span>
             </button>
-            <!-- Кнопка записи (аудио) – убрана для простоты -->
         </div>
     </div>
 
-    <!-- Настройки (оставляем как есть, но они не критичны) -->
     <div class="settings-panel" id="settingsPanel">
         <h2 class="text-xl font-bold mb-4">Настройки</h2>
         <div class="space-y-4">
@@ -88,23 +83,19 @@
         (function() {
             "use strict";
 
-            // ---- Глобальные переменные ----
             let ws = null;
             let isConnected = false;
             let isInitialized = false;
             let requestId = 0;
             let pendingCalls = {};
+            let chatToolName = null;
 
             const wsUrl = `wss://${window.location.host}/`;
-            let chatToolName = null; // будет заполнено после tools/list
-
-            // DOM-элементы
             const statusEl = document.getElementById('connectionStatus');
             const chatBox = document.getElementById('chatBox');
             const messageInput = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
 
-            // ---- Вспомогательные функции ----
             function setStatus(text, state) {
                 statusEl.textContent = text;
                 statusEl.className = `status ${state}`;
@@ -128,23 +119,15 @@
 
             function sendJsonRpc(method, params, callback) {
                 const id = ++requestId;
-                const message = {
-                    jsonrpc: "2.0",
-                    id: id,
-                    method: method,
-                    params: params || {}
-                };
-                if (callback) {
-                    pendingCalls[id] = callback;
-                }
+                const message = { jsonrpc: "2.0", id, method, params: params || {} };
+                if (callback) pendingCalls[id] = callback;
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify(message));
                 } else {
-                    console.warn('WebSocket не открыт, сообщение не отправлено');
+                    console.warn('WebSocket не открыт');
                 }
             }
 
-            // ---- Обработчики WebSocket ----
             function connect() {
                 if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
                 console.log('Подключение к:', wsUrl);
@@ -154,7 +137,6 @@
                     console.log('WebSocket открыт');
                     isConnected = true;
                     setStatus('Инициализация...', 'connecting');
-                    // Отправляем initialize
                     sendJsonRpc('initialize', {
                         protocolVersion: "2024-11-05",
                         capabilities: {},
@@ -162,24 +144,19 @@
                     }, function(response) {
                         console.log('Initialize ответ:', response);
                         if (response.result) {
-                            // Отправляем initialized уведомление (это не запрос)
                             ws.send(JSON.stringify({ jsonrpc: "2.0", method: "initialized" }));
                             isInitialized = true;
                             setStatus('Подключено (MCP)', 'connected');
                             appendMessage('system', '✅ MCP-сессия инициализирована');
-                            // Запрашиваем список инструментов
                             sendJsonRpc('tools/list', {}, function(toolsResponse) {
                                 console.log('Список инструментов:', toolsResponse);
                                 if (toolsResponse.result && toolsResponse.result.tools) {
                                     const tools = toolsResponse.result.tools;
-                                    // Ищем инструмент для чата – обычно "send_message" или "chat"
-                                    const chatTool = tools.find(t => t.name === 'send_message' || t.name === 'chat' || t.name === 'ask');
+                                    const chatTool = tools.find(t => t.name === 'send_message' || t.name === 'chat' || t.name === 'ask' || t.name === 'xiaozhi');
                                     if (chatTool) {
                                         chatToolName = chatTool.name;
-                                        console.log('Найден инструмент для чата:', chatToolName);
                                         appendMessage('system', `🔧 Инструмент: ${chatToolName}`);
                                     } else {
-                                        console.warn('Не найден подходящий инструмент, используем первый:', tools[0]?.name);
                                         chatToolName = tools[0]?.name || 'send_message';
                                         appendMessage('system', `⚠️ Используем инструмент: ${chatToolName}`);
                                     }
@@ -197,16 +174,11 @@
                     try {
                         const data = JSON.parse(event.data);
                         console.log('Получено JSON-RPC:', data);
-                        // Если это ответ на запрос
                         if (data.id && pendingCalls[data.id]) {
                             const callback = pendingCalls[data.id];
                             delete pendingCalls[data.id];
                             callback(data);
-                        } else if (data.method === 'text' || data.method === 'message') {
-                            // Некоторые MCP-серверы могут отправлять сообщения как уведомления
-                            // Но обычно они приходят как результат вызова tools/call
                         } else {
-                            // Могут быть другие уведомления
                             console.log('Уведомление:', data);
                         }
                     } catch (e) {
@@ -229,7 +201,6 @@
                 };
             }
 
-            // ---- Отправка сообщения ----
             function sendMessage() {
                 const text = messageInput.value.trim();
                 if (!text) return;
@@ -237,17 +208,12 @@
                     appendMessage('error', '❌ Соединение не готово или инструмент не найден');
                     return;
                 }
-
-                // Отображаем сообщение пользователя
                 appendMessage('user', text);
-
-                // Вызываем tools/call
                 sendJsonRpc('tools/call', {
                     name: chatToolName,
-                    arguments: { message: text } // или { text: text } – зависит от инструмента
+                    arguments: { message: text }
                 }, function(response) {
                     if (response.result) {
-                        // Предполагаем, что ответ содержит поле content или result
                         let reply = '';
                         if (response.result.content && Array.isArray(response.result.content)) {
                             reply = response.result.content.map(item => item.text || '').join('\n');
@@ -256,30 +222,21 @@
                         } else {
                             reply = JSON.stringify(response.result);
                         }
-                        if (reply) {
-                            appendMessage('server', reply);
-                        } else {
-                            appendMessage('system', '⚠️ Пустой ответ');
-                        }
+                        if (reply) appendMessage('server', reply);
+                        else appendMessage('system', '⚠️ Пустой ответ');
                     } else if (response.error) {
                         appendMessage('error', '❌ Ошибка: ' + response.error.message);
                     } else {
                         appendMessage('error', '❌ Неизвестный ответ');
                     }
                 });
-
                 messageInput.value = '';
             }
 
-            // ---- Инициализация UI ----
             function initUI() {
-                // Кнопка отправки
                 sendBtn.addEventListener('click', sendMessage);
-                messageInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') sendMessage();
-                });
+                messageInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
 
-                // Настройки (кнопки, переключатель) – оставляем заглушки
                 document.getElementById('settingsToggleBtn').addEventListener('click', function() {
                     document.getElementById('settingsPanel').classList.toggle('active');
                     document.getElementById('overlay').classList.toggle('active');
@@ -295,7 +252,6 @@
                     document.getElementById('settingsPanel').classList.remove('active');
                     document.getElementById('overlay').classList.remove('active');
                 });
-                // Переключатель токена – пока не трогаем
                 document.getElementById('enableToken').addEventListener('change', function(e) {
                     const tokenInput = document.getElementById('serverToken');
                     const statusText = document.getElementById('tokenStatus');
@@ -314,12 +270,10 @@
                 });
             }
 
-            // ---- Запуск ----
             document.addEventListener('DOMContentLoaded', function() {
                 initUI();
                 connect();
             });
-
         })();
     </script>
 </body>

@@ -11,12 +11,11 @@ import uvicorn
 
 load_dotenv()
 
-# --- КОНФИГУРАЦИЯ ---
-# Используем правильный эндпоинт MCP
-WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/mcp")
+# --- АДРЕС ВАШЕГО MCPHub (НЕ api.xiaozhi.me!) ---
+WS_URL = os.getenv("WS_URL", "wss://xiaozhi-mcphub-deploy-server.onrender.com/mcp")
 TOKEN = os.getenv("DEVICE_TOKEN", "")
 if not TOKEN:
-    print("⚠️  DEVICE_TOKEN не задан! Чат не будет работать.")
+    print("⚠️  DEVICE_TOKEN не задан!")
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -42,24 +41,20 @@ CLIENT_ID = get_client_id()
 async def websocket_proxy(websocket: WebSocket):
     await websocket.accept()
     print(f"📡 Клиент подключился: {websocket.client}")
-    
-    # Формируем URL с токеном в строке запроса
+
     ws_url_with_token = f"{WS_URL}?token={TOKEN}" if TOKEN else WS_URL
-    
-    # Заголовки (без Authorization — токен уже в URL)
     headers = {
         "Device-Id": DEVICE_ID,
         "Client-Id": CLIENT_ID,
         "Protocol-Version": "1",
     }
-    
-    print(f"🌐 Подключение к Xiaozhi по адресу: {ws_url_with_token}")
+
+    print(f"🌐 Подключение к MCPHub по адресу: {ws_url_with_token}")
     print(f"📋 Заголовки: {headers}")
-    
+
     try:
         async with websockets.connect(ws_url_with_token, extra_headers=headers, timeout=10) as server_ws:
-            print("✅ Подключено к серверу Xiaozhi (MCP)")
-            
+            print("✅ Подключено к MCPHub")
             async def forward_to_server():
                 try:
                     while True:
@@ -68,25 +63,21 @@ async def websocket_proxy(websocket: WebSocket):
                 except WebSocketDisconnect:
                     pass
                 except Exception as e:
-                    print(f"Ошибка пересылки клиент→сервер: {e}")
-            
+                    print(f"Ошибка клиент→сервер: {e}")
+
             async def forward_to_client():
                 try:
                     async for msg in server_ws:
                         if isinstance(msg, str):
                             await websocket.send_text(msg)
                         else:
-                            # бинарные данные игнорируем
                             pass
                 except Exception as e:
-                    print(f"Ошибка пересылки сервер→клиент: {e}")
-            
-            await asyncio.gather(
-                forward_to_server(),
-                forward_to_client()
-            )
+                    print(f"Ошибка сервер→клиент: {e}")
+
+            await asyncio.gather(forward_to_server(), forward_to_client())
     except websockets.exceptions.InvalidStatusCode as e:
-        print(f"❌ Неверный статус-код от сервера Xiaozhi: {e.status_code}")
+        print(f"❌ Неверный статус-код: {e.status_code}")
         await websocket.close()
     except Exception as e:
         print(f"❌ Ошибка прокси: {e}")
@@ -99,7 +90,6 @@ async def get_index():
     try:
         with open("templates/index.html", "r", encoding="utf-8") as f:
             html = f.read()
-        # Подстановка переменных
         html = html.replace("{{ device_id }}", DEVICE_ID)
         html = html.replace("{{ ws_url }}", WS_URL)
         html = html.replace("{{ local_proxy_url }}", "")

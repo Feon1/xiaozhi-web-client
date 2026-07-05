@@ -158,7 +158,7 @@ def cleanup():
 
 def run_proxy():
     """在单独的进程中运行proxy服务器"""
-    proxy = WebSocketProxy()
+    proxy = None
     asyncio.run(proxy.main())
 
 if __name__ == '__main__':

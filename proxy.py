@@ -13,7 +13,7 @@ load_dotenv()
 WS_URL = os.getenv("WS_URL")
 if not WS_URL:
     print("⚠️  WS_URL не задан, использую значение по умолчанию: ")
-    WS_URL = "WS_URL=wss://api.tenclass.net/xiaozhi/v1/
+    WS_URL = "wss://api.tenclass.net/xiaozhi/v1/"
 DEVICE_TOKEN=test-token"  # правильный адрес без /v1
 
 TOKEN = os.getenv("DEVICE_TOKEN")

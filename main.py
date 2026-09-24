@@ -17,7 +17,7 @@ if not TOKEN:
     print("⚠️  ВНИМАНИЕ: DEVICE_TOKEN не задан! Чат не сможет подключиться.")
 
 # Используем эндпоинт /ws, а не /mcp/
-BASE_WS_URL = os.getenv("WS_URL", "wss://api.xiaozhi.me/ws")
+BASE_WS_URL = os.getenv("WS_URL", "wss://api.tenclass.net/xiaozhi/v1/")
 WS_URL = BASE_WS_URL  # токен передаём в заголовке, а не в URL
 
 app = FastAPI()
